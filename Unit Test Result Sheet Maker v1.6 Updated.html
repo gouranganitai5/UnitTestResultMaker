@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unit Test Result Sheet Maker v1.0</title>
+
+    <!-- Dependencies via CDN -->
+    <!-- XLSX for Excel Upload & Download -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Standalone html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Standalone jsPDF (UMD) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Google Fonts: English & Bengali Support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Serif+Bengali:wght@400;600;700&family=Roboto:wght@400;500;700&family=Tiro+Bangla&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS Variables & Theme */
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary: #0ea5e9;
+            --bg-dark: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-ui);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Top Header Navbar */
+        header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-weight: bold;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+        }
+
+        .brand-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .top-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* Buttons */
+        .btn {
+            background: #334155;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.5rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary { background: var(--primary); }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .btn-success { background: var(--accent-green); }
+        .btn-success:hover { background: #059669; }
+
+        .btn-danger { background: var(--accent-red); }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-warning { background: var(--accent-amber); color: #000; font-weight: 600; }
+        .btn-warning:hover { background: #d97706; }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        /* Main Workspace Split Layout */
+        .main-workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Sidebar Control Panel */
+        .sidebar {
+            width: 440px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        /* Control Panel Tabs */
+        .tabs {
+            display: flex;
+            background: #0f172a;
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem 0.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active {
+            color: var(--secondary);
+            border-bottom-color: var(--secondary);
+            background: var(--panel-bg);
+        }
+
+        .tab-content {
+            padding: 1.25rem;
+            overflow-y: auto;
+            flex: 1;
+            display: none;
+        }
+
+        .tab-content.active { display: block; }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .form-control {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.6rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .form-row .form-group { flex: 1; }
+
+        .form-inline-style {
+            display: flex;
+            gap: 0.4rem;
+            background: #0f172a;
+            padding: 0.3rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .style-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .style-btn:hover { background: #334155; color: white; }
+        .style-btn.active { background: var(--primary); color: white; }
+
+        /* Range Slider Container with Red (-) and Green (+) Stepper Buttons */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            accent-color: var(--secondary);
+            min-width: 0;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            font-size: 0.85rem;
+            color: var(--secondary);
+            font-weight: 600;
+            min-width: 44px;
+            text-align: right;
+        }
+
+        /* Stepper Buttons for Sliders */
+        .btn-slider {
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            border: none;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            padding: 0;
+        }
+
+        .btn-slider:active {
+            transform: scale(0.92);
+        }
+
+        .btn-slider-dec {
+            background-color: var(--accent-red);
+        }
+
+        .btn-slider-dec:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-slider-inc {
+            background-color: var(--accent-green);
+        }
+
+        .btn-slider-inc:hover {
+            background-color: #059669;
+        }
+
+        /* Dynamic Table Column List */
+        .column-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .column-item span {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Live A4 Preview Container */
+        .preview-workspace {
+            flex: 1;
+            background: #090d16;
+            overflow: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .preview-toolbar {
+            position: sticky;
+            top: 0;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            z-index: 20;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        /* A4 Page Paper Styling */
+        .a4-page {
+            background: white;
+            color: black;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            margin-bottom: 2rem;
+            position: relative;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            line-height: 1.35;
+            font-variant-ligatures: normal;
+            text-rendering: optimizeLegibility;
+            overflow: hidden;
+        }
+
+        .a4-page.portrait {
+            width: 210mm;
+            height: 297mm;
+            min-height: 297mm;
+            max-height: 297mm;
+        }
+
+        .a4-page.landscape {
+            width: 297mm;
+            height: 210mm;
+            min-height: 210mm;
+            max-height: 210mm;
+        }
+
+        /* Printable Heading Styles */
+        .sheet-header {
+            width: 100%;
+            margin-bottom: 5px;
+            position: relative;
+        }
+
+        .sheet-year-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            text-align: right;
+            line-height: 1.2;
+        }
+
+        .sheet-title {
+            text-align: center;
+            text-transform: uppercase;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .sheet-address {
+            text-align: center;
+            margin-top: 3px;
+            word-break: break-word;
+            line-height: 1.25;
+        }
+
+        .sheet-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding: 0 4px;
+            line-height: 1.25;
+        }
+
+        /* Printable Horizontal Separator */
+        .sheet-separator {
+            border: none;
+            background-color: black;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Printable Result Table */
+        .sheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            table-layout: fixed;
+        }
+
+        .sheet-table th, 
+        .sheet-table td {
+            border: 1px solid #000;
+            text-align: center;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            font-variant-ligatures: normal;
+            box-sizing: border-box;
+            vertical-align: middle;
+        }
+
+        .sheet-table th {
+            background-color: #f2f2f2;
+        }
+
+        .sheet-table th.col-name,
+        .sheet-table td.col-name {
+            text-align: left;
+            padding-left: 6px;
+        }
+
+        /* Animated Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 520px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+            transform: translateY(20px) scale(0.95);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-header {
+            background: #0f172a;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--secondary);
+        }
+
+        .modal-body {
+            padding: 1.25rem;
+        }
+
+        .modal-footer {
+            background: #0f172a;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .progress-bar-bg {
+            height: 6px;
+            background: #334155;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--secondary);
+            width: 0%;
+            transition: width 0.2s ease;
+        }
+
+        .student-display-card {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.85rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .student-roll-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            font-size: 0.75rem;
+            font-weight:bold;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            margin-bottom: 0.4rem;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: #1e293b;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4);
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            pointer-events: auto;
+            animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .toast.success { border-left-color: var(--accent-green); }
+        .toast.error { border-left-color: var(--accent-red); }
+        .toast.warning { border-left-color: var(--accent-amber); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Rules Table */
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+        }
+
+        .rules-table th, .rules-table td {
+            padding: 0.4rem;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .rules-table input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive Mobile Layout */
+        @media (max-width: 900px) {
+            body { overflow: auto; }
+            .main-workspace { flex-direction: column; overflow: visible; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .preview-workspace { padding: 1rem 0.5rem; overflow: visible; }
+            .a4-page.portrait, .a4-page.landscape {
+                width: 100% !important;
+                min-height: auto !important;
+                height: auto !important;
+                max-height: none !important;
+                transform: scale(1) !important;
+            }
+            .modal-card { width: 95%; margin: 0 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation Bar -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">UT</div>
+            <div class="brand-title">Unit Test Result Sheet Maker <span style="font-size: 0.75rem; color: var(--secondary); font-weight:normal;">v1.0</span></div>
+        </div>
+
+        <div class="top-toolbar">
+            <button class="btn btn-warning" onclick="app.newSheet()"><span style="font-size:1.1rem">📄</span> New Sheet</button>
+            <button class="btn" onclick="document.getElementById('excel-file-input').click()"><span style="font-size:1.1rem">📊</span> Upload Excel</button>
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display:none;" onchange="app.handleExcelUpload(event)">
+            
+            <button class="btn btn-sm" onclick="app.downloadSampleExcel()">📥 Sample Excel</button>
+            
+            <button class="btn" onclick="document.getElementById('json-file-input').click()">📂 Import JSON</button>
+            <input type="file" id="json-file-input" accept=".json" style="display:none;" onchange="app.importJSON(event)">
+            
+            <button class="btn" onclick="app.exportJSON()">💾 Export JSON</button>
+            <button class="btn btn-primary" onclick="app.exportPDF()"><span style="font-size:1.1rem">🖨️</span> Export PDF</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Split View -->
+    <div class="main-workspace">
+        
+        <!-- Sidebar Settings Panel -->
+        <div class="sidebar">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="app.switchTab('tab-heading')">Header Content</button>
+                <button class="tab-btn" onclick="app.switchTab('tab-table-style')">Table Styling</button>
+                <button class="tab-btn" onclick="app.switchTab('tab-page')">Page & Layout</button>
+                <button class="tab-btn" onclick="app.switchTab('tab-marks')">Marks & Cols</button>
+                <button class="tab-btn" onclick="app.switchTab('tab-grades')">Grading</button>
+            </div>
+
+            <!-- Tab 1: Heading Content & Unified Typography Editor -->
+            <div id="tab-heading" class="tab-content active">
+                <div class="form-group">
+                    <label>School Name (Row 1)</label>
+                    <input type="text" id="cfg-school-name" class="form-control" oninput="app.updateHeadingFromInput()">
+                </div>
+
+                <div class="form-group">
+                    <label>Short Address (Row 2)</label>
+                    <input type="text" id="cfg-school-address" class="form-control" oninput="app.updateHeadingFromInput()">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Class</label>
+                        <input type="text" id="cfg-class-name" class="form-control" oninput="app.updateHeadingFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <input type="text" id="cfg-subject-name" class="form-control" oninput="app.updateHeadingFromInput()">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Section</label>
+                        <input type="text" id="cfg-section-name" class="form-control" oninput="app.updateHeadingFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Top Right Year</label>
+                        <input type="text" id="cfg-year" class="form-control" oninput="app.updateHeadingFromInput()">
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 1.25rem 0;">
+
+                <div style="font-weight:700; color:var(--secondary); font-size:0.85rem; margin-bottom:0.75rem; text-transform:uppercase;">
+                    Unified Heading Formatting Controls
+                </div>
+
+                <div class="form-group">
+                    <label>Font Family (Bengali / English)</label>
+                    <select id="cfg-font-family" class="form-control" onchange="app.updateTypographyFromInput()">
+                        <option value="'Hind Siliguri', sans-serif">Hind Siliguri (Bengali / English)</option>
+                        <option value="'Noto Sans Bengali', sans-serif">Noto Sans Bengali</option>
+                        <option value="'Noto Serif Bengali', serif">Noto Serif Bengali</option>
+                        <option value="'Tiro Bangla', serif">Tiro Bangla</option>
+                        <option value="'Inter', sans-serif">Inter (Modern English)</option>
+                        <option value="'Roboto', sans-serif">Roboto</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="'Times New Roman', serif">Times New Roman</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Heading Base Font Size</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-heading-font-size', -1)">—</button>
+                        <input type="range" id="cfg-heading-font-size" min="12" max="28" value="18" oninput="app.updateTypographyFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-heading-font-size', 1)">+</button>
+                        <span id="cfg-heading-font-size-val" class="slider-value">18px</span>
+                    </div>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">Adjusts School Name, Address, Class, Subject, Section & Year together.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Heading Text Styling</label>
+                    <div class="form-inline-style">
+                        <button id="btn-fmt-bold" class="style-btn" onclick="app.toggleFormat('headingBold')">B</button>
+                        <button id="btn-fmt-italic" class="style-btn" style="font-style:italic;" onclick="app.toggleFormat('headingItalic')">I</button>
+                        <button id="btn-fmt-underline" class="style-btn" style="text-decoration:underline;" onclick="app.toggleFormat('headingUnderline')">U</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Table Styling Sliders (Row Height & Individual Column Widths with +/- Buttons) -->
+            <div id="tab-table-style" class="tab-content">
+                <div style="font-weight:700; color:var(--secondary); font-size:0.85rem; margin-bottom:0.75rem; text-transform:uppercase;">
+                    Row Height & Table Sizing
+                </div>
+
+                <div class="form-group">
+                    <label>Table Row Height</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-row-height', -1)">—</button>
+                        <input type="range" id="cfg-row-height" min="18" max="55" value="26" oninput="app.updateRowHeightFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-row-height', 1)">+</button>
+                        <span id="cfg-row-height-val" class="slider-value">26px</span>
+                    </div>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">Adjusts row height dynamically. Pagination automatically recalculates so every page is filled.</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Table Header Font Size</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-th-font-size', -1)">—</button>
+                        <input type="range" id="cfg-th-font-size" min="9" max="20" value="13" oninput="app.updateTypographyFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-th-font-size', 1)">+</button>
+                        <span id="cfg-th-font-size-val" class="slider-value">13px</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Table Header Style</label>
+                    <div class="form-inline-style">
+                        <button id="btn-th-bold" class="style-btn" onclick="app.toggleFormat('thBold')">B</button>
+                        <button id="btn-th-italic" class="style-btn" style="font-style:italic;" onclick="app.toggleFormat('thItalic')">I</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Student Table Content Font Size</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-td-font-size', -1)">—</button>
+                        <input type="range" id="cfg-td-font-size" min="8" max="18" value="12" oninput="app.updateTypographyFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-td-font-size', 1)">+</button>
+                        <span id="cfg-td-font-size-val" class="slider-value">12px</span>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 1.25rem 0;">
+
+                <div style="font-weight:700; color:var(--secondary); font-size:0.85rem; margin-bottom:0.75rem; text-transform:uppercase;">
+                    Individual Column Widths (%)
+                </div>
+
+                <div id="col-widths-controls-container">
+                    <!-- Column Width sliders rendered dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Tab 3: Page & Separator Settings -->
+            <div id="tab-page" class="tab-content">
+                <div class="form-group">
+                    <label>Page Orientation</label>
+                    <select id="cfg-orientation" class="form-control" onchange="app.updatePageFromInput()">
+                        <option value="portrait">Portrait (Vertical A4)</option>
+                        <option value="landscape">Landscape (Horizontal A4)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Page Number Position</label>
+                    <select id="cfg-page-number-pos" class="form-control" onchange="app.updatePageFromInput()">
+                        <option value="bottom-right">Bottom Right</option>
+                        <option value="bottom-center">Bottom Center</option>
+                        <option value="bottom-left">Bottom Left</option>
+                        <option value="top-right">Top Right</option>
+                        <option value="top-center">Top Center</option>
+                        <option value="top-left">Top Left</option>
+                        <option value="none">Hide Page Number</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Page Number Font Size</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-page-number-size', -1)">—</button>
+                        <input type="range" id="cfg-page-number-size" min="8" max="22" value="10" oninput="app.updatePageFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-page-number-size', 1)">+</button>
+                        <span id="cfg-page-number-size-val" class="slider-value">10px</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Page Number Style</label>
+                    <div class="form-inline-style">
+                        <button id="btn-page-num-bold" class="style-btn" onclick="app.toggleFormat('pageNumberBold')">B (Bold)</button>
+                    </div>
+                </div>
+
+                <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:0.4rem; display:block;">Page Margins (mm)</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Top</label>
+                        <input type="number" id="cfg-margin-top" class="form-control" min="5" max="30" oninput="app.updatePageFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Bottom</label>
+                        <input type="number" id="cfg-margin-bottom" class="form-control" min="5" max="30" oninput="app.updatePageFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Left</label>
+                        <input type="number" id="cfg-margin-left" class="form-control" min="5" max="30" oninput="app.updatePageFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Right</label>
+                        <input type="number" id="cfg-margin-right" class="form-control" min="5" max="30" oninput="app.updatePageFromInput()">
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 1.25rem 0;">
+
+                <div class="form-group">
+                    <label>Separator Line Width (%)</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-sep-width', -1)">—</button>
+                        <input type="range" id="cfg-sep-width" min="20" max="100" value="100" oninput="app.updateSeparatorFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-sep-width', 1)">+</button>
+                        <span id="cfg-sep-width-val" class="slider-value">100%</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Line Thickness (px)</label>
+                    <div class="slider-container">
+                        <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-sep-thickness', -1)">—</button>
+                        <input type="range" id="cfg-sep-thickness" min="1" max="5" value="1" oninput="app.updateSeparatorFromInput()">
+                        <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-sep-thickness', 1)">+</button>
+                        <span id="cfg-sep-thickness-val" class="slider-value">1px</span>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Spacing Above (px)</label>
+                        <input type="number" id="cfg-sep-sp-top" class="form-control" min="0" max="30" oninput="app.updateSeparatorFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Spacing Below (px)</label>
+                        <input type="number" id="cfg-sep-sp-bot" class="form-control" min="0" max="30" oninput="app.updateSeparatorFromInput()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Dynamic Columns & Mark Entry Trigger -->
+            <div id="tab-marks" class="tab-content">
+                <div style="font-weight:700; color:var(--secondary); font-size:0.85rem; margin-bottom:0.75rem; text-transform:uppercase;">
+                    Edit Mandatory Column Labels
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Roll No Heading</label>
+                        <input type="text" id="cfg-lbl-roll" class="form-control" oninput="app.updateColumnLabelsFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Name Heading</label>
+                        <input type="text" id="cfg-lbl-name" class="form-control" oninput="app.updateColumnLabelsFromInput()">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Heading</label>
+                        <input type="text" id="cfg-lbl-total" class="form-control" oninput="app.updateColumnLabelsFromInput()">
+                    </div>
+                    <div class="form-group">
+                        <label>Grade Heading</label>
+                        <input type="text" id="cfg-lbl-grade" class="form-control" oninput="app.updateColumnLabelsFromInput()">
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 1.25rem 0;">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <label style="font-weight:700; color:white; font-size:0.9rem;">Test / Marks Columns</label>
+                    <button class="btn btn-sm btn-primary" onclick="app.addColumn()">+ Add Column</button>
+                </div>
+
+                <div id="columns-list-container">
+                    <!-- Column Items Rendered via JS -->
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 1.25rem 0;">
+
+                <div class="form-group">
+                    <label>Student Roster (<span id="student-count-badge">0</span> loaded)</label>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                        Import students via Excel button above or enter marks below.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 5: Grading System Settings -->
+            <div id="tab-grades" class="tab-content">
+                <div class="form-group" style="display:flex; align-items:center; justify-content:space-between; background:#0f172a; padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border-color); margin-bottom:1rem;">
+                    <label style="margin:0; cursor:pointer; font-weight:600; font-size:0.85rem; color:white;" for="cfg-show-unit-grades">Show Grade for Each Unit Mark</label>
+                    <input type="checkbox" id="cfg-show-unit-grades" style="width:18px; height:18px; accent-color:var(--secondary); cursor:pointer;" onchange="app.toggleUnitGrades(this.checked)">
+                </div>
+
+                <div class="form-group">
+                    <label>Calculate Overall Grade Based On</label>
+                    <select id="cfg-grade-source" class="form-control" onchange="app.updateGradeSourceFromInput()">
+                        <option value="total">Total Marks</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; margin-bottom:0.5rem;">
+                    <label style="font-weight:700; color:white; font-size:0.85rem;">Grading Rules</label>
+                    <button class="btn btn-sm btn-primary" onclick="app.addGradeRule()">+ Add Grade</button>
+                </div>
+
+                <div id="grade-validation-alert" style="display:none; background: rgba(239,68,68,0.2); border: 1px solid var(--accent-red); padding: 0.5rem; border-radius: 6px; font-size: 0.75rem; color: #fca5a5; margin-bottom: 0.5rem;">
+                    ⚠️ Grade range overlap or invalid min/max numbers detected!
+                </div>
+
+                <table class="rules-table">
+                    <thead>
+                        <tr>
+                            <th style="color:var(--text-muted); font-size:0.75rem;">Grade</th>
+                            <th style="color:var(--text-muted); font-size:0.75rem;">Min</th>
+                            <th style="color:var(--text-muted); font-size:0.75rem;">Max</th>
+                            <th style="width:30px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="grade-rules-tbody">
+                        <!-- Grade rules rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Live A4 Interactive Document Preview Workspace -->
+        <div class="preview-workspace">
+            <div class="preview-toolbar">
+                <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">A4 Preview Zoom:</span>
+                <button class="btn btn-sm" onclick="app.adjustZoom(-0.1)">-</button>
+                <span id="zoom-value" style="font-size: 0.85rem; font-weight: bold; width: 45px; text-align: center;">70%</span>
+                <button class="btn btn-sm" onclick="app.adjustZoom(0.1)">+</button>
+                <button class="btn btn-sm" onclick="app.resetZoom()">Reset</button>
+            </div>
+
+            <!-- Pages Render Target -->
+            <div id="a4-pages-container" style="transform-origin: top center; transition: transform 0.2s;">
+                <!-- Printable multi-page DOM rendered dynamically here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Animated Modal: Student-by-Student Mark Entry Workflow with Quick Search & Direct Update -->
+    <div id="mark-entry-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-col-title">Unit-I Marks Entry</div>
+                <div style="font-size:0.8rem; color:var(--text-muted);" id="modal-progress-text">Student 1 of 5</div>
+            </div>
+            
+            <div class="modal-body">
+                <!-- FEATURE: Quick Jump & Search by Roll No or Name with 'Pick' Button -->
+                <div class="form-group" style="margin-bottom: 0.85rem; background: #0f172a; padding: 0.65rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.35rem;">
+                        <label style="font-size:0.72rem; color:var(--secondary); font-weight:700; text-transform:uppercase; margin-bottom:0;">⚡ Quick Search & Jump</label>
+                        <span style="font-size:0.7rem; color:var(--text-muted);">Search and tap 'Pick'</span>
+                    </div>
+                    <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <input type="text" id="modal-search-filter" class="form-control" style="font-size:0.85rem; padding:0.4rem 0.6rem; flex:1;" placeholder="🔍 Type Roll or Name..." oninput="app.filterModalStudentList(this.value)" onkeydown="if(event.key==='Enter') app.pickSelectedModalStudent()">
+                        <select id="modal-student-select" class="form-control" style="font-size:0.85rem; padding:0.4rem 0.6rem; flex:1.2; cursor:pointer;" onchange="app.onStudentSelectChange(this.value)">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                        <!-- Dedicated Pick Button -->
+                        <button type="button" class="btn btn-primary btn-sm" style="padding: 0.45rem 0.75rem; font-weight: 700; white-space: nowrap; font-size: 0.82rem;" onclick="app.pickSelectedModalStudent()">Pick</button>
+                    </div>
+                </div>
+
+                <div class="progress-bar-bg">
+                    <div id="modal-progress-bar" class="progress-bar-fill"></div>
+                </div>
+
+                <!-- Active Student Card: Live Name and Marks Updating -->
+                <div class="student-display-card">
+                    <div id="modal-student-roll" class="student-roll-badge">Roll No: 1</div>
+                    <div style="margin-top: 0.3rem;">
+                        <label style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:0.2rem; text-transform:uppercase;">Student Name (Edit Spelling):</label>
+                        <input type="text" id="modal-student-name-input" class="form-control" style="text-align:center; font-weight:bold; font-size:1.1rem; color:white; background:#1e293b;" placeholder="Student Name" oninput="app.onModalNameChange(this.value)">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <label style="text-align:center; display:block;">Enter Marks (or tap Skip for '-')</label>
+                    <input type="number" step="any" id="modal-marks-input" class="form-control" style="font-size:1.5rem; text-align:center; font-weight:bold;" placeholder="0.0" oninput="app.onModalMarkChange(this.value)" onkeydown="if(event.key==='Enter') app.modalNextStudent()">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn" onclick="app.modalPrevStudent()">◄ Previous</button>
+                <button class="btn btn-warning" onclick="app.modalSkipStudent()">- Skip</button>
+                <button class="btn btn-primary" onclick="app.modalNextStudent()">Next ►</button>
+                <button class="btn btn-success" onclick="app.closeMarkEntryModal()">Done / Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reusable Confirmation / Prompt Modal -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title" id="confirm-modal-title">Confirm Action</div>
+            </div>
+            <div class="modal-body" id="confirm-modal-body" style="font-size:0.95rem; line-height:1.5;">
+                Are you sure?
+            </div>
+            <div class="modal-footer" style="justify-content: flex-end;">
+                <button class="btn" onclick="app.closeConfirmModal(false)">Cancel</button>
+                <button class="btn btn-danger" id="confirm-modal-action-btn" onclick="app.closeConfirmModal(true)">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        /**
+         * Unit Test Result Sheet Maker v1.0
+         * Single Page Application Core Module
+         */
+        class ResultSheetApp {
+            constructor() {
+                // Application Single Source of Truth State
+                this.state = {
+                    heading: {
+                        schoolName: "ABC HIGH SCHOOL",
+                        address: "Korunamoi, sector -VI, West Bengal, 7000001",
+                        className: "Class-V",
+                        subject: "Subject - Math",
+                        section: "Section - B",
+                        year: "Year - 2026"
+                    },
+                    columnLabels: {
+                        roll: "Roll No",
+                        name: "Name",
+                        total: "Total",
+                        grade: "Grade"
+                    },
+                    typography: {
+                        fontFamily: "'Hind Siliguri', sans-serif",
+                        headingFontSize: 18,
+                        headingBold: true,
+                        headingItalic: false,
+                        headingUnderline: false,
+                        tableHeaderFontSize: 13,
+                        thBold: true,
+                        thItalic: false,
+                        tableContentFontSize: 12,
+                        pageNumberFontSize: 10,
+                        pageNumberBold: false
+                    },
+                    tableLayout: {
+                        rowHeight: 26,
+                        colWidths: {
+                            roll: 10,
+                            name: 32,
+                            total: 12,
+                            grade: 12
+                        }
+                    },
+                    page: {
+                        orientation: "portrait",
+                        pageNumberPosition: "bottom-right",
+                        marginTop: 10,
+                        marginBottom: 10,
+                        marginLeft: 10,
+                        marginRight: 10
+                    },
+                    separator: {
+                        width: 100,
+                        thickness: 1,
+                        spacingTop: 8,
+                        spacingBottom: 12
+                    },
+                    columns: [
+                        { id: "col_unit_1", name: "Unit-I" }
+                    ],
+                    students: [
+                        { id: "s1", rollNo: "1", name: "Rahul Kumar", marks: { col_unit_1: "18" } },
+                        { id: "s2", rollNo: "2", name: "Amit Das", marks: { col_unit_1: "17" } },
+                        { id: "s3", rollNo: "3", name: "Suman Roy", marks: { col_unit_1: "15" } },
+                        { id: "s4", rollNo: "4", name: "Priya Das", marks: { col_unit_1: "19" } },
+                        { id: "s5", rollNo: "5", name: "Animesh Roy", marks: { col_unit_1: "20" } },
+                        { id: "s6", rollNo: "6", name: "আদর্শ দত্ত (Adarsh)", marks: { col_unit_1: "16" } }
+                    ],
+                    gradeConfig: {
+                        showUnitGrades: false,
+                        sourceColId: "total",
+                        rules: [
+                            { name: "A+", min: 90, max: 100 },
+                            { name: "A",  min: 80, max: 89 },
+                            { name: "B+", min: 70, max: 79 },
+                            { name: "B",  min: 60, max: 69 },
+                            { name: "C+", min: 50, max: 59 },
+                            { name: "C",  min: 40, max: 49 },
+                            { name: "D",  min: 0,  max: 39 }
+                        ]
+                    }
+                };
+
+                this.currentZoom = 0.7; // Default 70% zoom
+                this.modalState = {
+                    activeColId: null,
+                    studentIndex: 0
+                };
+                this.pendingConfirmCallback = null;
+            }
+
+            init() {
+                this.syncInputsFromState();
+                this.renderAll();
+                this.applyZoom();
+                this.showToast("Application initialized successfully.", "success");
+            }
+
+            // Step Slider handler for red (-) and green (+) buttons
+            stepSlider(sliderId, delta) {
+                const input = document.getElementById(sliderId);
+                if (!input) return;
+                const min = input.min !== "" ? parseFloat(input.min) : -Infinity;
+                const max = input.max !== "" ? parseFloat(input.max) : Infinity;
+                const step = parseFloat(input.step) || 1;
+                const effectiveDelta = delta !== undefined ? delta : step;
+                
+                let val = (parseFloat(input.value) || 0) + effectiveDelta;
+                if (val < min) val = min;
+                if (val > max) val = max;
+                
+                input.value = val;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            // Sync UI inputs with state object
+            syncInputsFromState() {
+                document.getElementById('cfg-school-name').value = this.state.heading.schoolName || "";
+                document.getElementById('cfg-school-address').value = this.state.heading.address || "";
+                document.getElementById('cfg-class-name').value = this.state.heading.className || "";
+                document.getElementById('cfg-subject-name').value = this.state.heading.subject || "";
+                document.getElementById('cfg-section-name').value = this.state.heading.section || "";
+                document.getElementById('cfg-year').value = this.state.heading.year || "";
+
+                document.getElementById('cfg-lbl-roll').value = this.state.columnLabels?.roll || "Roll No";
+                document.getElementById('cfg-lbl-name').value = this.state.columnLabels?.name || "Name";
+                document.getElementById('cfg-lbl-total').value = this.state.columnLabels?.total || "Total";
+                document.getElementById('cfg-lbl-grade').value = this.state.columnLabels?.grade || "Grade";
+
+                document.getElementById('cfg-font-family').value = this.state.typography?.fontFamily || "'Hind Siliguri', sans-serif";
+                
+                const headingSize = this.state.typography?.headingFontSize || 18;
+                document.getElementById('cfg-heading-font-size').value = headingSize;
+                document.getElementById('cfg-heading-font-size-val').innerText = `${headingSize}px`;
+
+                const thSize = this.state.typography?.tableHeaderFontSize || 13;
+                document.getElementById('cfg-th-font-size').value = thSize;
+                document.getElementById('cfg-th-font-size-val').innerText = `${thSize}px`;
+
+                const tdSize = this.state.typography?.tableContentFontSize || 12;
+                document.getElementById('cfg-td-font-size').value = tdSize;
+                document.getElementById('cfg-td-font-size-val').innerText = `${tdSize}px`;
+
+                if (!this.state.tableLayout) {
+                    this.state.tableLayout = { rowHeight: 26, colWidths: { roll: 10, name: 32, total: 12, grade: 12 } };
+                }
+                const rh = this.state.tableLayout.rowHeight || 26;
+                document.getElementById('cfg-row-height').value = rh;
+                document.getElementById('cfg-row-height-val').innerText = `${rh}px`;
+                
+                document.getElementById('btn-fmt-bold').classList.toggle('active', !!this.state.typography?.headingBold);
+                document.getElementById('btn-fmt-italic').classList.toggle('active', !!this.state.typography?.headingItalic);
+                document.getElementById('btn-fmt-underline').classList.toggle('active', !!this.state.typography?.headingUnderline);
+
+                document.getElementById('btn-th-bold').classList.toggle('active', !!this.state.typography?.thBold);
+                document.getElementById('btn-th-italic').classList.toggle('active', !!this.state.typography?.thItalic);
+
+                document.getElementById('cfg-orientation').value = this.state.page?.orientation || "portrait";
+                document.getElementById('cfg-page-number-pos').value = this.state.page?.pageNumberPosition || "bottom-right";
+                
+                const pgSize = this.state.typography?.pageNumberFontSize || 10;
+                document.getElementById('cfg-page-number-size').value = pgSize;
+                document.getElementById('cfg-page-number-size-val').innerText = `${pgSize}px`;
+                document.getElementById('btn-page-num-bold').classList.toggle('active', !!this.state.typography?.pageNumberBold);
+
+                document.getElementById('cfg-margin-top').value = this.state.page?.marginTop ?? 10;
+                document.getElementById('cfg-margin-bottom').value = this.state.page?.marginBottom ?? 10;
+                document.getElementById('cfg-margin-left').value = this.state.page?.marginLeft ?? 10;
+                document.getElementById('cfg-margin-right').value = this.state.page?.marginRight ?? 10;
+
+                const sepW = this.state.separator?.width ?? 100;
+                document.getElementById('cfg-sep-width').value = sepW;
+                document.getElementById('cfg-sep-width-val').innerText = `${sepW}%`;
+                
+                const sepT = this.state.separator?.thickness ?? 1;
+                document.getElementById('cfg-sep-thickness').value = sepT;
+                document.getElementById('cfg-sep-thickness-val').innerText = `${sepT}px`;
+                
+                document.getElementById('cfg-sep-sp-top').value = this.state.separator?.spacingTop ?? 8;
+                document.getElementById('cfg-sep-sp-bot').value = this.state.separator?.spacingBottom ?? 12;
+
+                document.getElementById('cfg-show-unit-grades').checked = !!this.state.gradeConfig?.showUnitGrades;
+
+                this.renderColumnWidthSliders();
+                this.renderColumnsControlList();
+                this.renderGradeSettings();
+            }
+
+            // Tab Switching
+            switchTab(tabId) {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                event.target.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            }
+
+            // State Input Handlers
+            updateHeadingFromInput() {
+                this.state.heading.schoolName = document.getElementById('cfg-school-name').value;
+                this.state.heading.address = document.getElementById('cfg-school-address').value;
+                this.state.heading.className = document.getElementById('cfg-class-name').value;
+                this.state.heading.subject = document.getElementById('cfg-subject-name').value;
+                this.state.heading.section = document.getElementById('cfg-section-name').value;
+                this.state.heading.year = document.getElementById('cfg-year').value;
+                this.renderPreview();
+            }
+
+            updateColumnLabelsFromInput() {
+                this.state.columnLabels.roll = document.getElementById('cfg-lbl-roll').value;
+                this.state.columnLabels.name = document.getElementById('cfg-lbl-name').value;
+                this.state.columnLabels.total = document.getElementById('cfg-lbl-total').value;
+                this.state.columnLabels.grade = document.getElementById('cfg-lbl-grade').value;
+                this.renderColumnWidthSliders();
+                this.renderPreview();
+            }
+
+            updateRowHeightFromInput() {
+                const rh = parseInt(document.getElementById('cfg-row-height').value) || 26;
+                this.state.tableLayout.rowHeight = rh;
+                document.getElementById('cfg-row-height-val').innerText = `${rh}px`;
+                this.renderPreview();
+            }
+
+            renderColumnWidthSliders() {
+                const container = document.getElementById('col-widths-controls-container');
+                if (!container) return;
+                container.innerHTML = "";
+
+                if (!this.state.tableLayout.colWidths) {
+                    this.state.tableLayout.colWidths = { roll: 10, name: 32, total: 12, grade: 12 };
+                }
+
+                // Mandatory Columns
+                const cols = [
+                    { id: 'roll', name: this.state.columnLabels?.roll || 'Roll No', defaultWidth: 10 },
+                    { id: 'name', name: this.state.columnLabels?.name || 'Name', defaultWidth: 32 }
+                ];
+
+                // Dynamic Marks Columns
+                this.state.columns.forEach(col => {
+                    cols.push({ id: col.id, name: col.name, defaultWidth: 12 });
+                });
+
+                // Total & Grade Columns
+                cols.push({ id: 'total', name: this.state.columnLabels?.total || 'Total', defaultWidth: 12 });
+                cols.push({ id: 'grade', name: this.state.columnLabels?.grade || 'Grade', defaultWidth: 12 });
+
+                cols.forEach(col => {
+                    const currentWidth = this.state.tableLayout.colWidths[col.id] !== undefined ? this.state.tableLayout.colWidths[col.id] : col.defaultWidth;
+                    this.state.tableLayout.colWidths[col.id] = currentWidth;
+
+                    const group = document.createElement('div');
+                    group.className = 'form-group';
+                    group.style.marginBottom = '0.75rem';
+                    group.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                            <span style="font-size:0.75rem; font-weight:600; color:var(--text-muted);">${this.escapeHTML(col.name)} Width</span>
+                            <span id="cfg-col-width-val-${col.id}" style="font-size:0.75rem; font-weight:bold; color:var(--secondary);">${currentWidth}%</span>
+                        </div>
+                        <div class="slider-container">
+                            <button type="button" class="btn-slider btn-slider-dec" title="Decrease" onclick="app.stepSlider('cfg-col-width-${col.id}', -1)">—</button>
+                            <input type="range" id="cfg-col-width-${col.id}" min="4" max="65" value="${currentWidth}" oninput="app.updateColWidth('${col.id}', this.value)">
+                            <button type="button" class="btn-slider btn-slider-inc" title="Increase" onclick="app.stepSlider('cfg-col-width-${col.id}', 1)">+</button>
+                        </div>
+                    `;
+                    container.appendChild(group);
+                });
+            }
+
+            updateColWidth(colId, value) {
+                const val = parseInt(value) || 10;
+                this.state.tableLayout.colWidths[colId] = val;
+                const readout = document.getElementById(`cfg-col-width-val-${colId}`);
+                if (readout) readout.innerText = `${val}%`;
+                this.renderPreview();
+            }
+
+            updateTypographyFromInput() {
+                this.state.typography.fontFamily = document.getElementById('cfg-font-family').value;
+                
+                const headingSize = parseInt(document.getElementById('cfg-heading-font-size').value);
+                this.state.typography.headingFontSize = headingSize;
+                document.getElementById('cfg-heading-font-size-val').innerText = `${headingSize}px`;
+
+                const thSize = parseInt(document.getElementById('cfg-th-font-size').value);
+                this.state.typography.tableHeaderFontSize = thSize;
+                document.getElementById('cfg-th-font-size-val').innerText = `${thSize}px`;
+
+                const tdSize = parseInt(document.getElementById('cfg-td-font-size').value);
+                this.state.typography.tableContentFontSize = tdSize;
+                document.getElementById('cfg-td-font-size-val').innerText = `${tdSize}px`;
+
+                this.renderPreview();
+            }
+
+            toggleFormat(property) {
+                this.state.typography[property] = !this.state.typography[property];
+                this.syncInputsFromState();
+                this.renderPreview();
+            }
+
+            updatePageFromInput() {
+                this.state.page.orientation = document.getElementById('cfg-orientation').value;
+                this.state.page.pageNumberPosition = document.getElementById('cfg-page-number-pos').value;
+                
+                const pgSize = parseInt(document.getElementById('cfg-page-number-size').value) || 10;
+                this.state.typography.pageNumberFontSize = pgSize;
+                document.getElementById('cfg-page-number-size-val').innerText = `${pgSize}px`;
+
+                this.state.page.marginTop = parseInt(document.getElementById('cfg-margin-top').value) || 0;
+                this.state.page.marginBottom = parseInt(document.getElementById('cfg-margin-bottom').value) || 0;
+                this.state.page.marginLeft = parseInt(document.getElementById('cfg-margin-left').value) || 0;
+                this.state.page.marginRight = parseInt(document.getElementById('cfg-margin-right').value) || 0;
+                this.renderPreview();
+            }
+
+            updateSeparatorFromInput() {
+                this.state.separator.width = parseInt(document.getElementById('cfg-sep-width').value);
+                document.getElementById('cfg-sep-width-val').innerText = `${this.state.separator.width}%`;
+                
+                this.state.separator.thickness = parseInt(document.getElementById('cfg-sep-thickness').value);
+                document.getElementById('cfg-sep-thickness-val').innerText = `${this.state.separator.thickness}px`;
+
+                this.state.separator.spacingTop = parseInt(document.getElementById('cfg-sep-sp-top').value) || 0;
+                this.state.separator.spacingBottom = parseInt(document.getElementById('cfg-sep-sp-bot').value) || 0;
+
+                this.renderPreview();
+            }
+
+            // Column Management
+            addColumn() {
+                const count = this.state.columns.length + 1;
+                const newCol = {
+                    id: `col_unit_${Date.now()}`,
+                    name: `Unit-${count}`
+                };
+                this.state.columns.push(newCol);
+                this.renderColumnWidthSliders();
+                this.renderColumnsControlList();
+                this.renderGradeSettings();
+                this.renderPreview();
+                this.showToast(`Added column "${newCol.name}"`, "success");
+            }
+
+            renameColumn(colId) {
+                const col = this.state.columns.find(c => c.id === colId);
+                if(!col) return;
+                const newName = prompt("Enter new column heading name:", col.name);
+                if(newName && newName.trim() !== "") {
+                    col.name = newName.trim();
+                    this.renderColumnWidthSliders();
+                    this.renderColumnsControlList();
+                    this.renderGradeSettings();
+                    this.renderPreview();
+                    this.showToast("Column heading renamed successfully.", "success");
+                }
+            }
+
+            deleteColumn(colId) {
+                const col = this.state.columns.find(c => c.id === colId);
+                if(!col) return;
+
+                this.showConfirmModal(
+                    "Delete Column",
+                    `Are you sure you want to delete column <b>"${col.name}"</b> and all associated marks?`,
+                    () => {
+                        this.state.columns = this.state.columns.filter(c => c.id !== colId);
+                        this.state.students.forEach(s => {
+                            delete s.marks[colId];
+                        });
+                        if(this.state.gradeConfig.sourceColId === colId) {
+                            this.state.gradeConfig.sourceColId = "total";
+                        }
+                        if (this.state.tableLayout && this.state.tableLayout.colWidths) {
+                            delete this.state.tableLayout.colWidths[colId];
+                        }
+                        this.renderColumnWidthSliders();
+                        this.renderColumnsControlList();
+                        this.renderGradeSettings();
+                        this.renderPreview();
+                        this.showToast(`Deleted column "${col.name}"`, "warning");
+                    }
+                );
+            }
+
+            renderColumnsControlList() {
+                const container = document.getElementById('columns-list-container');
+                container.innerHTML = "";
+
+                this.state.columns.forEach(col => {
+                    const item = document.createElement('div');
+                    item.className = 'column-item';
+                    item.innerHTML = `
+                        <span>${this.escapeHTML(col.name)}</span>
+                        <div style="display:flex; gap:0.3rem;">
+                            <button class="btn btn-sm btn-primary" onclick="app.startMarkEntryModal('${col.id}')">✏️ Enter Marks</button>
+                            <button class="btn btn-sm" onclick="app.renameColumn('${col.id}')">Rename</button>
+                            <button class="btn btn-sm btn-danger" onclick="app.deleteColumn('${col.id}')">🗑️</button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+
+                document.getElementById('student-count-badge').innerText = this.state.students.length;
+            }
+
+            // Grade Calculation & Settings
+            renderGradeSettings() {
+                const select = document.getElementById('cfg-grade-source');
+                select.innerHTML = `<option value="total">Total Marks</option>`;
+                this.state.columns.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col.id;
+                    opt.innerText = col.name;
+                    select.appendChild(opt);
+                });
+                select.value = this.state.gradeConfig.sourceColId;
+
+                const tbody = document.getElementById('grade-rules-tbody');
+                tbody.innerHTML = "";
+
+                this.state.gradeConfig.rules.forEach((rule, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="text" value="${this.escapeHTML(rule.name)}" onchange="app.updateGradeRule(${index}, 'name', this.value)"></td>
+                        <td><input type="number" value="${rule.min}" onchange="app.updateGradeRule(${index}, 'min', this.value)"></td>
+                        <td><input type="number" value="${rule.max}" onchange="app.updateGradeRule(${index}, 'max', this.value)"></td>
+                        <td><button class="btn btn-sm btn-danger" onclick="app.deleteGradeRule(${index})">×</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                this.validateGradeRules();
+            }
+
+            toggleUnitGrades(checked) {
+                this.state.gradeConfig.showUnitGrades = checked;
+                this.renderPreview();
+            }
+
+            updateGradeSourceFromInput() {
+                this.state.gradeConfig.sourceColId = document.getElementById('cfg-grade-source').value;
+                this.renderPreview();
+            }
+
+            addGradeRule() {
+                this.state.gradeConfig.rules.push({ name: "NEW", min: 0, max: 0 });
+                this.renderGradeSettings();
+                this.renderPreview();
+            }
+
+            updateGradeRule(index, field, value) {
+                if(field === 'name') {
+                    this.state.gradeConfig.rules[index].name = value.trim();
+                } else {
+                    this.state.gradeConfig.rules[index][field] = parseFloat(value) || 0;
+                }
+                this.validateGradeRules();
+                this.renderPreview();
+            }
+
+            deleteGradeRule(index) {
+                this.state.gradeConfig.rules.splice(index, 1);
+                this.renderGradeSettings();
+                this.renderPreview();
+            }
+
+            validateGradeRules() {
+                const rules = this.state.gradeConfig.rules;
+                let hasError = false;
+
+                for(let i=0; i<rules.length; i++) {
+                    if(rules[i].min > rules[i].max) hasError = true;
+                    for(let j=i+1; j<rules.length; j++) {
+                        if(Math.max(rules[i].min, rules[j].min) <= Math.min(rules[i].max, rules[j].max)) {
+                            hasError = true;
+                        }
+                    }
+                }
+
+                document.getElementById('grade-validation-alert').style.display = hasError ? 'block' : 'none';
+            }
+
+            getGradeForMark(val) {
+                if(val === "-" || val === "" || val === undefined || isNaN(val)) {
+                    return "-";
+                }
+                const num = parseFloat(val);
+                const rule = this.state.gradeConfig.rules.find(r => num >= r.min && num <= r.max);
+                return rule ? rule.name : "-";
+            }
+
+            calculateStudentTotal(student) {
+                let sum = 0;
+                let hasValidMark = false;
+
+                this.state.columns.forEach(col => {
+                    const val = student.marks[col.id];
+                    if(val !== undefined && val !== "" && val !== "-" && !isNaN(val)) {
+                        sum += parseFloat(val);
+                        hasValidMark = true;
+                    }
+                });
+
+                return hasValidMark ? sum : "-";
+            }
+
+            calculateStudentGrade(student) {
+                let targetVal;
+                if(this.state.gradeConfig.sourceColId === "total") {
+                    targetVal = this.calculateStudentTotal(student);
+                } else {
+                    targetVal = student.marks[this.state.gradeConfig.sourceColId];
+                }
+
+                return this.getGradeForMark(targetVal);
+            }
+
+            // Quick Jump & Search in Marks Entry Modal
+            populateModalStudentSelect(filterText = "") {
+                const select = document.getElementById('modal-student-select');
+                if (!select) return;
+                select.innerHTML = "";
+
+                const filter = (filterText || "").trim().toLowerCase();
+                const activeColId = this.modalState.activeColId;
+                let matchCount = 0;
+
+                this.state.students.forEach((s, idx) => {
+                    const rollStr = String(s.rollNo || "").toLowerCase();
+                    const nameStr = String(s.name || "").toLowerCase();
+
+                    if (!filter || rollStr.includes(filter) || nameStr.includes(filter)) {
+                        const markVal = (s.marks && s.marks[activeColId] !== undefined) ? s.marks[activeColId] : "-";
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        opt.innerText = `[${s.rollNo}] ${s.name} (${markVal})`;
+                        if (idx === this.modalState.studentIndex) {
+                            opt.selected = true;
+                        }
+                        select.appendChild(opt);
+                        matchCount++;
+                    }
+                });
+
+                if (matchCount === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = "";
+                    opt.innerText = "-- No matches found --";
+                    select.appendChild(opt);
+                }
+            }
+
+            filterModalStudentList(query) {
+                this.populateModalStudentSelect(query);
+            }
+
+            onStudentSelectChange(val) {
+                // Synchronize selection state if user interacts with dropdown
+            }
+
+            pickSelectedModalStudent() {
+                const select = document.getElementById('modal-student-select');
+                if (!select) return;
+                const val = select.value;
+                if (val !== "" && !isNaN(val)) {
+                    this.jumpToStudent(val);
+                    const chosen = this.state.students[parseInt(val)];
+                    this.showToast(`Picked Roll No ${chosen.rollNo} (${chosen.name})`, "info");
+                    
+                    // Immediately focus input for smooth entry
+                    setTimeout(() => {
+                        const markInput = document.getElementById('modal-marks-input');
+                        if (markInput) {
+                            markInput.focus();
+                            markInput.select();
+                        }
+                    }, 80);
+                } else {
+                    this.showToast("No matching student found to pick.", "warning");
+                }
+            }
+
+            jumpToStudent(indexVal) {
+                if (indexVal === "" || isNaN(indexVal)) return;
+                const newIdx = parseInt(indexVal);
+                if (newIdx < 0 || newIdx >= this.state.students.length) return;
+
+                // Save current mark & name before switching
+                const inputVal = document.getElementById('modal-marks-input').value.trim();
+                this.modalSaveCurrentMark(inputVal === "" ? "-" : inputVal);
+
+                this.modalState.studentIndex = newIdx;
+                this.updateMarkEntryModalUI();
+                this.renderPreview();
+            }
+
+            // Real-time live updating for name and marks of active student
+            onModalNameChange(val) {
+                const student = this.state.students[this.modalState.studentIndex];
+                if (student) {
+                    student.name = val;
+                    const searchFilterVal = document.getElementById('modal-search-filter')?.value || "";
+                    this.populateModalStudentSelect(searchFilterVal);
+                    this.renderPreview();
+                }
+            }
+
+            onModalMarkChange(val) {
+                const student = this.state.students[this.modalState.studentIndex];
+                if (student) {
+                    student.marks[this.modalState.activeColId] = val.trim() === "" ? "-" : val.trim();
+                    const searchFilterVal = document.getElementById('modal-search-filter')?.value || "";
+                    this.populateModalStudentSelect(searchFilterVal);
+                    this.renderPreview();
+                }
+            }
+
+            startMarkEntryModal(colId) {
+                if(this.state.students.length === 0) {
+                    this.showToast("No students available. Upload an Excel file first.", "warning");
+                    return;
+                }
+
+                this.modalState.activeColId = colId;
+                this.modalState.studentIndex = 0;
+
+                const searchInput = document.getElementById('modal-search-filter');
+                if (searchInput) searchInput.value = "";
+
+                this.updateMarkEntryModalUI();
+
+                const modal = document.getElementById('mark-entry-modal');
+                modal.classList.add('active');
+            }
+
+            updateMarkEntryModalUI() {
+                const col = this.state.columns.find(c => c.id === this.modalState.activeColId);
+                const total = this.state.students.length;
+                const currentIdx = this.modalState.studentIndex;
+                const student = this.state.students[currentIdx];
+
+                document.getElementById('modal-col-title').innerText = `${col ? col.name : ''} Marks Entry`;
+                document.getElementById('modal-progress-text').innerText = `Student ${currentIdx + 1} of ${total}`;
+                
+                const percent = ((currentIdx + 1) / total) * 100;
+                document.getElementById('modal-progress-bar').style.width = `${percent}%`;
+
+                document.getElementById('modal-student-roll').innerText = `${this.state.columnLabels?.roll || 'Roll No'}: ${student.rollNo}`;
+                
+                const nameInput = document.getElementById('modal-student-name-input');
+                nameInput.value = student.name;
+
+                const input = document.getElementById('modal-marks-input');
+                const existingVal = student.marks[this.modalState.activeColId];
+                input.value = (existingVal !== undefined && existingVal !== "-") ? existingVal : "";
+                
+                // Update Quick Jump dropdown
+                const searchFilterVal = document.getElementById('modal-search-filter')?.value || "";
+                this.populateModalStudentSelect(searchFilterVal);
+
+                setTimeout(() => {
+                    input.focus();
+                    input.select();
+                }, 100);
+            }
+
+            modalSaveCurrentMark(val) {
+                const student = this.state.students[this.modalState.studentIndex];
+                if(student) {
+                    if (val !== undefined) {
+                        student.marks[this.modalState.activeColId] = val;
+                    }
+                    const nameInput = document.getElementById('modal-student-name-input');
+                    if(nameInput && nameInput.value.trim() !== "") {
+                        student.name = nameInput.value.trim();
+                    }
+                }
+            }
+
+            modalNextStudent() {
+                const inputVal = document.getElementById('modal-marks-input').value.trim();
+                this.modalSaveCurrentMark(inputVal === "" ? "-" : inputVal);
+
+                if(this.modalState.studentIndex < this.state.students.length - 1) {
+                    this.modalState.studentIndex++;
+                    this.updateMarkEntryModalUI();
+                } else {
+                    this.showToast("Marks entry completed for all students!", "success");
+                    this.closeMarkEntryModal();
+                }
+                this.renderPreview();
+            }
+
+            modalPrevStudent() {
+                const inputVal = document.getElementById('modal-marks-input').value.trim();
+                this.modalSaveCurrentMark(inputVal === "" ? "-" : inputVal);
+
+                if(this.modalState.studentIndex > 0) {
+                    this.modalState.studentIndex--;
+                    this.updateMarkEntryModalUI();
+                }
+                this.renderPreview();
+            }
+
+            modalSkipStudent() {
+                this.modalSaveCurrentMark("-");
+                if(this.modalState.studentIndex < this.state.students.length - 1) {
+                    this.modalState.studentIndex++;
+                    this.updateMarkEntryModalUI();
+                } else {
+                    this.closeMarkEntryModal();
+                }
+                this.renderPreview();
+            }
+
+            closeMarkEntryModal() {
+                const inputVal = document.getElementById('modal-marks-input').value.trim();
+                this.modalSaveCurrentMark(inputVal === "" ? "-" : inputVal);
+                document.getElementById('mark-entry-modal').classList.remove('active');
+                this.renderPreview();
+            }
+
+            calculateRowsPerPage() {
+                const isPortrait = this.state.page.orientation === "portrait";
+                const totalPageHeightMM = isPortrait ? 297 : 210;
+                const topMarginMM = this.state.page.marginTop || 10;
+                const bottomMarginMM = this.state.page.marginBottom || 10;
+                const usableHeightMM = Math.max(80, totalPageHeightMM - topMarginMM - bottomMarginMM);
+                
+                const usableHeightPX = usableHeightMM * 3.779528;
+
+                const baseHeadingSize = this.state.typography.headingFontSize || 18;
+                const titleHeight = baseHeadingSize * 1.35;
+                const addressHeight = (baseHeadingSize * 0.7) * 1.35 + 4;
+                const metaRowHeight = (baseHeadingSize * 0.72) * 1.35 + 10;
+                const sepHeight = (this.state.separator.thickness || 1) + (this.state.separator.spacingTop || 8) + (this.state.separator.spacingBottom || 12);
+                const thFontSize = this.state.typography.tableHeaderFontSize || 13;
+                const theadHeight = thFontSize + 16;
+                const safetyBuffer = 14;
+
+                const headerTotalPX = titleHeight + addressHeight + metaRowHeight + sepHeight + theadHeight + safetyBuffer;
+                const availableBodyPX = Math.max(50, usableHeightPX - headerTotalPX);
+
+                const rowHeight = this.state.tableLayout.rowHeight || 26;
+                return Math.max(1, Math.floor(availableBodyPX / rowHeight));
+            }
+
+            // Multi-Page Printable A4 Preview Generator
+            renderPreview() {
+                const container = document.getElementById('a4-pages-container');
+                container.innerHTML = "";
+
+                const rowsPerPage = this.calculateRowsPerPage();
+                const totalStudents = this.state.students.length;
+                const pageCount = Math.max(1, Math.ceil(totalStudents / rowsPerPage));
+
+                for(let p = 0; p < pageCount; p++) {
+                    const pageStudents = this.state.students.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+                    const pageElement = this.createA4PageDOM(pageStudents, p + 1, pageCount);
+                    container.appendChild(pageElement);
+                }
+            }
+
+            createA4PageDOM(studentsChunk, pageNum, totalPages) {
+                const page = document.createElement('div');
+                page.className = `a4-page ${this.state.page.orientation}`;
+                
+                page.style.padding = `${this.state.page.marginTop}mm ${this.state.page.marginRight}mm ${this.state.page.marginBottom}mm ${this.state.page.marginLeft}mm`;
+                page.style.fontFamily = this.state.typography.fontFamily;
+
+                const baseHeadingSize = this.state.typography.headingFontSize;
+                const headingTextStyle = `
+                    font-weight: ${this.state.typography.headingBold ? 'bold' : 'normal'};
+                    font-style: ${this.state.typography.headingItalic ? 'italic' : 'normal'};
+                    text-decoration: ${this.state.typography.headingUnderline ? 'underline' : 'none'};
+                `;
+
+                const rowHeight = this.state.tableLayout?.rowHeight || 26;
+                const colWidths = this.state.tableLayout?.colWidths || { roll: 10, name: 32, total: 12, grade: 12 };
+
+                const thStyle = `
+                    font-size: ${this.state.typography.tableHeaderFontSize}px;
+                    font-weight: ${this.state.typography.thBold ? 'bold' : 'normal'};
+                    font-style: ${this.state.typography.thItalic ? 'italic' : 'normal'};
+                    height: ${Math.max(22, rowHeight + 2)}px;
+                `;
+
+                const tdStyle = `
+                    font-size: ${this.state.typography.tableContentFontSize}px;
+                    height: ${rowHeight}px;
+                `;
+
+                // Header Column Widths
+                let tableColsHTML = `
+                    <th class="col-roll" style="${thStyle}; width:${colWidths.roll || 10}%;">${this.escapeHTML(this.state.columnLabels?.roll || 'Roll No')}</th>
+                    <th class="col-name" style="${thStyle}; width:${colWidths.name || 32}%;">${this.escapeHTML(this.state.columnLabels?.name || 'Name')}</th>
+                `;
+                
+                this.state.columns.forEach(col => {
+                    const w = colWidths[col.id] !== undefined ? colWidths[col.id] : 12;
+                    tableColsHTML += `<th style="${thStyle}; width:${w}%;">${this.escapeHTML(col.name)}</th>`;
+                });
+                
+                tableColsHTML += `
+                    <th style="${thStyle}; width:${colWidths.total || 12}%;">${this.escapeHTML(this.state.columnLabels?.total || 'Total')}</th>
+                    <th style="${thStyle}; width:${colWidths.grade || 12}%;">${this.escapeHTML(this.state.columnLabels?.grade || 'Grade')}</th>
+                `;
+
+                let rowsHTML = "";
+                if(studentsChunk.length === 0) {
+                    const totalColSpan = 4 + this.state.columns.length;
+                    rowsHTML = `<tr><td colspan="${totalColSpan}" style="padding:20px; color:#666; ${tdStyle}">No student records found. Upload an Excel file.</td></tr>`;
+                } else {
+                    studentsChunk.forEach(student => {
+                        const total = this.calculateStudentTotal(student);
+                        const grade = this.calculateStudentGrade(student);
+
+                        let markCellsHTML = "";
+                        this.state.columns.forEach(col => {
+                            const val = student.marks[col.id] !== undefined ? student.marks[col.id] : "-";
+                            let cellDisplay = this.escapeHTML(String(val));
+                            
+                            if(this.state.gradeConfig.showUnitGrades && val !== "-" && val !== "" && !isNaN(val)) {
+                                const unitGrade = this.getGradeForMark(val);
+                                if(unitGrade !== "-") {
+                                    cellDisplay += ` <span style="font-size:0.85em; font-weight:600; opacity:0.85;">(${this.escapeHTML(unitGrade)})</span>`;
+                                }
+                            }
+
+                            markCellsHTML += `<td style="${tdStyle}">${cellDisplay}</td>`;
+                        });
+
+                        rowsHTML += `
+                            <tr>
+                                <td class="col-roll" style="${tdStyle}">${this.escapeHTML(String(student.rollNo))}</td>
+                                <td class="col-name" style="${tdStyle}">${this.escapeHTML(student.name)}</td>
+                                ${markCellsHTML}
+                                <td style="${tdStyle}"><strong>${total}</strong></td>
+                                <td style="${tdStyle}"><strong>${grade}</strong></td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Dynamic Page Number Font Size and Weight Calculation
+                const pgFontSize = this.state.typography.pageNumberFontSize || 10;
+                const pgFontWeight = this.state.typography.pageNumberBold ? 'bold' : 'normal';
+
+                let pageNumStyle = "";
+                const pos = this.state.page.pageNumberPosition || 'bottom-right';
+                if (pos === 'none') {
+                    pageNumStyle = 'display: none;';
+                } else {
+                    const [vPos, hPos] = pos.split('-');
+                    const vCSS = vPos === 'top' ? `top: ${Math.max(2, this.state.page.marginTop - 6)}mm;` : `bottom: ${Math.max(2, this.state.page.marginBottom - 6)}mm;`;
+                    let hCSS = `right: ${this.state.page.marginRight}mm; text-align: right;`;
+                    if (hPos === 'left') hCSS = `left: ${this.state.page.marginLeft}mm; text-align: left;`;
+                    if (hPos === 'center') hCSS = `left: 0; right: 0; text-align: center;`;
+                    pageNumStyle = `position: absolute; ${vCSS} ${hCSS} font-size: ${pgFontSize}px; font-weight: ${pgFontWeight}; color: #333; pointer-events: none; z-index: 10;`;
+                }
+
+                page.innerHTML = `
+                    <div style="${pageNumStyle}">
+                        Page ${pageNum} of ${totalPages}
+                    </div>
+
+                    <div class="sheet-header">
+                        <div class="sheet-year-badge" style="font-size: ${Math.round(baseHeadingSize * 0.75)}px; ${headingTextStyle}">
+                            ${this.escapeHTML(this.state.heading.year || '')}
+                        </div>
+
+                        <div class="sheet-title" style="font-size: ${baseHeadingSize}px; ${headingTextStyle}">
+                            ${this.escapeHTML(this.state.heading.schoolName || 'SCHOOL NAME')}
+                        </div>
+                        <div class="sheet-address" style="font-size: ${Math.round(baseHeadingSize * 0.7)}px; ${headingTextStyle}">
+                            ${this.escapeHTML(this.state.heading.address || '')}
+                        </div>
+                        
+                        <div class="sheet-meta-row" style="font-size: ${Math.round(baseHeadingSize * 0.72)}px; ${headingTextStyle}">
+                            <span>${this.escapeHTML(this.state.heading.className || '')}</span>
+                            <span>${this.escapeHTML(this.state.heading.subject || '')}</span>
+                            <span>${this.escapeHTML(this.state.heading.section || '')}</span>
+                        </div>
+                    </div>
+
+                    <hr class="sheet-separator" style="
+                        width: ${this.state.separator.width}%;
+                        height: ${this.state.separator.thickness}px;
+                        margin-top: ${this.state.separator.spacingTop}px;
+                        margin-bottom: ${this.state.separator.spacingBottom}px;
+                    ">
+
+                    <table class="sheet-table">
+                        <thead>
+                            <tr>${tableColsHTML}</tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML}
+                        </tbody>
+                    </table>
+                `;
+
+                return page;
+            }
+
+            // Zoom Controls
+            applyZoom() {
+                const container = document.getElementById('a4-pages-container');
+                if (container) {
+                    container.style.transform = `scale(${this.currentZoom})`;
+                }
+                const readout = document.getElementById('zoom-value');
+                if (readout) {
+                    readout.innerText = `${Math.round(this.currentZoom * 100)}%`;
+                }
+            }
+
+            adjustZoom(delta) {
+                this.currentZoom = Math.min(Math.max(0.3, this.currentZoom + delta), 1.8);
+                this.applyZoom();
+            }
+
+            resetZoom() {
+                this.currentZoom = 0.7; // Default 70%
+                this.applyZoom();
+            }
+
+            // Excel Import & Validation Logic
+            handleExcelUpload(e) {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = new Uint8Array(event.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+                        if(!json || json.length === 0) {
+                            this.showToast("Uploaded Excel file is empty.", "error");
+                            return;
+                        }
+
+                        const sampleRow = json[0];
+                        const rollKey = Object.keys(sampleRow).find(k => /roll/i.test(k) || /sl/i.test(k) || /id/i.test(k));
+                        const nameKey = Object.keys(sampleRow).find(k => /name/i.test(k) || /student/i.test(k));
+
+                        if(!rollKey || !nameKey) {
+                            this.showToast("Could not detect 'Roll No' and 'Name' columns in Excel.", "error");
+                            return;
+                        }
+
+                        const newStudents = [];
+                        let hasDuplicates = false;
+                        const rollSet = new Set();
+
+                        json.forEach((row, idx) => {
+                            const roll = String(row[rollKey] || "").trim();
+                            const name = String(row[nameKey] || "").trim();
+                            
+                            if(roll || name) {
+                                if(rollSet.has(roll)) hasDuplicates = true;
+                                rollSet.add(roll);
+
+                                newStudents.push({
+                                    id: `s_${Date.now()}_${idx}`,
+                                    rollNo: roll || String(idx + 1),
+                                    name: name || "Unnamed Student",
+                                    marks: {}
+                                });
+                            }
+                        });
+
+                        if(newStudents.length === 0) {
+                            this.showToast("No valid student records found.", "error");
+                            return;
+                        }
+
+                        this.state.students = newStudents;
+                        this.renderColumnWidthSliders();
+                        this.renderColumnsControlList();
+                        this.renderPreview();
+
+                        if(hasDuplicates) {
+                            this.showToast(`Imported ${newStudents.length} students (Warning: duplicate roll numbers found).`, "warning");
+                        } else {
+                            this.showToast(`Successfully imported ${newStudents.length} students!`, "success");
+                        }
+
+                    } catch(err) {
+                        this.showToast("Failed to parse Excel file: " + err.message, "error");
+                    }
+                    e.target.value = "";
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            downloadSampleExcel() {
+                const data = [
+                    { "Roll No": "1", "Name": "Rahul Kumar" },
+                    { "Roll No": "2", "Name": "Amit Das" },
+                    { "Roll No": "3", "Name": "Suman Roy" },
+                    { "Roll No": "4", "Name": "Priya Das" },
+                    { "Roll No": "5", "Name": "Animesh Roy" },
+                    { "Roll No": "6", "Name": "আদর্শ দত্ত" }
+                ];
+                const ws = XLSX.utils.json_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Students");
+                XLSX.writeFile(wb, "Sample_Student_List.xlsx");
+                this.showToast("Downloaded sample Excel file.", "success");
+            }
+
+            getExportFileName(extension) {
+                let rawClass = (this.state.heading.className || "Class").trim();
+                let cleanClass = rawClass.replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '-');
+                if(!cleanClass) cleanClass = "Class";
+
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                const dateStr = `${dd}-${mm}-${yyyy}`;
+
+                let hours = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                const hh = String(hours).padStart(2, '0');
+                const timeStr = `${hh}_${minutes}${ampm}`;
+
+                return `${cleanClass}_${dateStr}_${timeStr}.${extension}`;
+            }
+
+            // JSON Export with all features
+            exportJSON() {
+                const filename = this.getExportFileName('json');
+                
+                const exportPayload = {
+                    version: "1.0",
+                    exportedAt: new Date().toISOString(),
+                    heading: { ...this.state.heading },
+                    columnLabels: { ...this.state.columnLabels },
+                    typography: { ...this.state.typography },
+                    tableLayout: {
+                        rowHeight: this.state.tableLayout?.rowHeight || 26,
+                        colWidths: { ...this.state.tableLayout?.colWidths }
+                    },
+                    page: { ...this.state.page },
+                    separator: { ...this.state.separator },
+                    columns: this.state.columns.map(col => ({ ...col })),
+                    students: this.state.students.map(s => ({
+                        id: s.id,
+                        rollNo: s.rollNo,
+                        name: s.name,
+                        marks: { ...s.marks }
+                    })),
+                    gradeConfig: {
+                        showUnitGrades: !!this.state.gradeConfig?.showUnitGrades,
+                        sourceColId: this.state.gradeConfig?.sourceColId || "total",
+                        rules: this.state.gradeConfig?.rules.map(r => ({ ...r }))
+                    }
+                };
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", filename);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+                this.showToast(`Exported project as ${filename}`, "success");
+            }
+
+            // JSON Import with compatibility validation
+            importJSON(e) {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        
+                        if (!imported || typeof imported !== 'object') {
+                            throw new Error("Corrupt or invalid JSON file structure.");
+                        }
+
+                        if (!imported.heading || !Array.isArray(imported.students) || !Array.isArray(imported.columns)) {
+                            throw new Error("JSON file is missing required project sections (heading, students, or columns).");
+                        }
+
+                        this.state.heading = {
+                            schoolName: imported.heading.schoolName || "",
+                            address: imported.heading.address || "",
+                            className: imported.heading.className || "",
+                            subject: imported.heading.subject || "",
+                            section: imported.heading.section || "",
+                            year: imported.heading.year || ""
+                        };
+
+                        this.state.columnLabels = {
+                            roll: imported.columnLabels?.roll || "Roll No",
+                            name: imported.columnLabels?.name || "Name",
+                            total: imported.columnLabels?.total || "Total",
+                            grade: imported.columnLabels?.grade || "Grade"
+                        };
+
+                        this.state.typography = {
+                            fontFamily: imported.typography?.fontFamily || "'Hind Siliguri', sans-serif",
+                            headingFontSize: imported.typography?.headingFontSize || 18,
+                            headingBold: imported.typography?.headingBold !== undefined ? imported.typography.headingBold : true,
+                            headingItalic: !!imported.typography?.headingItalic,
+                            headingUnderline: !!imported.typography?.headingUnderline,
+                            tableHeaderFontSize: imported.typography?.tableHeaderFontSize || 13,
+                            thBold: imported.typography?.thBold !== undefined ? imported.typography.thBold : true,
+                            thItalic: !!imported.typography?.thItalic,
+                            tableContentFontSize: imported.typography?.tableContentFontSize || 12,
+                            pageNumberFontSize: imported.typography?.pageNumberFontSize || 10,
+                            pageNumberBold: !!imported.typography?.pageNumberBold
+                        };
+
+                        this.state.tableLayout = {
+                            rowHeight: imported.tableLayout?.rowHeight || 26,
+                            colWidths: imported.tableLayout?.colWidths || { roll: 10, name: 32, total: 12, grade: 12 }
+                        };
+
+                        this.state.page = {
+                            orientation: imported.page?.orientation || "portrait",
+                            pageNumberPosition: imported.page?.pageNumberPosition || "bottom-right",
+                            marginTop: imported.page?.marginTop ?? 10,
+                            marginBottom: imported.page?.marginBottom ?? 10,
+                            marginLeft: imported.page?.marginLeft ?? 10,
+                            marginRight: imported.page?.marginRight ?? 10
+                        };
+
+                        this.state.separator = {
+                            width: imported.separator?.width ?? 100,
+                            thickness: imported.separator?.thickness ?? 1,
+                            spacingTop: imported.separator?.spacingTop ?? 8,
+                            spacingBottom: imported.separator?.spacingBottom ?? 12
+                        };
+
+                        this.state.columns = imported.columns.map((col, i) => ({
+                            id: col.id || `col_unit_${Date.now()}_${i}`,
+                            name: col.name || `Unit-${i + 1}`
+                        }));
+
+                        this.state.students = imported.students.map((s, i) => ({
+                            id: s.id || `s_${Date.now()}_${i}`,
+                            rollNo: s.rollNo || String(i + 1),
+                            name: s.name || "Student",
+                            marks: s.marks && typeof s.marks === 'object' ? s.marks : {}
+                        }));
+
+                        this.state.gradeConfig = {
+                            showUnitGrades: !!imported.gradeConfig?.showUnitGrades,
+                            sourceColId: imported.gradeConfig?.sourceColId || "total",
+                            rules: Array.isArray(imported.gradeConfig?.rules) && imported.gradeConfig.rules.length > 0
+                                ? imported.gradeConfig.rules.map(r => ({ ...r }))
+                                : [
+                                    { name: "A+", min: 90, max: 100 },
+                                    { name: "A",  min: 80, max: 89 },
+                                    { name: "B+", min: 70, max: 79 },
+                                    { name: "B",  min: 60, max: 69 },
+                                    { name: "C+", min: 50, max: 59 },
+                                    { name: "C",  min: 40, max: 49 },
+                                    { name: "D",  min: 0,  max: 39 }
+                                ]
+                        };
+
+                        this.syncInputsFromState();
+                        this.renderAll();
+                        this.applyZoom();
+                        this.showToast("Project restored from JSON successfully with all updated features!", "success");
+
+                    } catch(err) {
+                        this.showToast("JSON Import Error: " + err.message, "error");
+                    }
+                    e.target.value = "";
+                };
+                reader.readAsText(file);
+            }
+
+            // High-Resolution PDF Generation Engine
+            async exportPDF() {
+                this.showToast("Generating high-resolution PDF...", "warning");
+
+                const orientation = this.state.page.orientation || 'portrait';
+                const isPortrait = orientation === 'portrait';
+                const pdfWidthMM = isPortrait ? 210 : 297;
+                const pdfHeightMM = isPortrait ? 297 : 210;
+
+                // Ensure Bengali fonts are completely ready
+                if (document.fonts && document.fonts.ready) {
+                    await document.fonts.ready;
+                }
+
+                const rowsPerPage = this.calculateRowsPerPage();
+                const totalStudents = this.state.students.length;
+                const pageCount = Math.max(1, Math.ceil(totalStudents / rowsPerPage));
+
+                // Dedicated visible-to-engine staging container
+                const stage = document.createElement('div');
+                stage.style.position = 'fixed';
+                stage.style.top = '0';
+                stage.style.left = '0';
+                stage.style.zIndex = '-99999';
+                stage.style.opacity = '1';
+                stage.style.pointerEvents = 'none';
+                stage.style.backgroundColor = '#ffffff';
+                document.body.appendChild(stage);
+
+                try {
+                    let PDFConstructor = null;
+                    if (window.jspdf && typeof window.jspdf.jsPDF === 'function') {
+                        PDFConstructor = window.jspdf.jsPDF;
+                    } else if (typeof window.jsPDF === 'function') {
+                        PDFConstructor = window.jsPDF;
+                    }
+
+                    if (!PDFConstructor) {
+                        throw new Error("jsPDF library could not be initialized.");
+                    }
+
+                    const pdf = new PDFConstructor({
+                        orientation: orientation,
+                        unit: 'mm',
+                        format: 'a4',
+                        compress: true
+                    });
+
+                    // Capture each page explicitly
+                    for (let p = 0; p < pageCount; p++) {
+                        const pageStudents = this.state.students.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+                        const pageDom = this.createA4PageDOM(pageStudents, p + 1, pageCount);
+                        
+                        // Exact A4 dimensions in staging
+                        pageDom.style.width = isPortrait ? '210mm' : '297mm';
+                        pageDom.style.height = isPortrait ? '297mm' : '210mm';
+                        pageDom.style.minHeight = isPortrait ? '297mm' : '210mm';
+                        pageDom.style.maxHeight = isPortrait ? '297mm' : '210mm';
+                        pageDom.style.boxShadow = 'none';
+                        pageDom.style.margin = '0';
+                        pageDom.style.transform = 'none';
+
+                        stage.innerHTML = '';
+                        stage.appendChild(pageDom);
+
+                        // Allow layout engine to settle
+                        await new Promise(r => setTimeout(r, 80));
+
+                        const canvas = await html2canvas(pageDom, {
+                            scale: 2,
+                            useCORS: true,
+                            allowTaint: true,
+                            letterRendering: true,
+                            logging: false,
+                            backgroundColor: '#ffffff'
+                        });
+
+                        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+                        if (p > 0) {
+                            pdf.addPage('a4', orientation);
+                        }
+                        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidthMM, pdfHeightMM, undefined, 'FAST');
+                    }
+
+                    const filename = this.getExportFileName('pdf');
+                    pdf.save(filename);
+                    this.showToast(`Exported ${filename} successfully!`, "success");
+
+                } catch (err) {
+                    console.error("PDF Export Error:", err);
+                    this.showToast("PDF generation failed: " + err.message, "error");
+                } finally {
+                    if (stage && stage.parentNode) {
+                        stage.parentNode.removeChild(stage);
+                    }
+                }
+            }
+
+            // Reset App / New Sheet
+            newSheet() {
+                this.showConfirmModal(
+                    "Create New Sheet",
+                    "Are you sure you want to create a new sheet? All unsaved current student data will be lost.",
+                    () => {
+                        this.state.students = [];
+                        this.state.columns = [{ id: "col_unit_1", name: "Unit-I" }];
+                        this.renderColumnWidthSliders();
+                        this.renderAll();
+                        this.showToast("New sheet created.", "info");
+                    }
+                );
+            }
+
+            renderAll() {
+                this.renderColumnsControlList();
+                this.renderGradeSettings();
+                this.renderPreview();
+            }
+
+            // Modal Confirm System
+            showConfirmModal(title, bodyHTML, callback) {
+                document.getElementById('confirm-modal-title').innerText = title;
+                document.getElementById('confirm-modal-body').innerHTML = bodyHTML;
+                this.pendingConfirmCallback = callback;
+                document.getElementById('confirm-modal').classList.add('active');
+            }
+
+            closeConfirmModal(isConfirmed) {
+                document.getElementById('confirm-modal').classList.remove('active');
+                if(isConfirmed && typeof this.pendingConfirmCallback === 'function') {
+                    this.pendingConfirmCallback();
+                }
+                this.pendingConfirmCallback = null;
+            }
+
+            // Toast Notification Engine
+            showToast(message, type = "info") {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                
+                let icon = "ℹ️";
+                if(type === "success") icon = "✅";
+                if(type === "error") icon = "❌";
+                if(type === "warning") icon = "⚠️";
+
+                toast.innerHTML = `<span>${icon}</span> <span>${this.escapeHTML(message)}</span>`;
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100%)';
+                    toast.style.transition = 'all 0.3s';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3500);
+            }
+
+            escapeHTML(str) {
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        }
+
+        // Initialize Application Instance
+        const app = new ResultSheetApp();
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
